@@ -14,8 +14,8 @@ typedef struct mock_task_struct {
 
 
     //CPU Scheduling
-    long state;        //Current state of the process (running, sleeping, waiting)
-    int prio;          //Process priority
+    volatile long state;        //Current state of the process (running, sleeping, waiting)
+    unsigned int prio;          //Process priority
     int policy;        //Scheduling policy (SCHED_FIFO for first-in-first-out, SCHED_RR for roundrobin)
 
     //Memory Usage physical and virtual
@@ -28,7 +28,6 @@ typedef struct mock_task_struct {
     unsigned int io_wbytes;
 
     struct mock_task_struct * next;
-
-};
+    }mock_task_struct;
 
 #endif

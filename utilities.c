@@ -14,6 +14,10 @@ struct mock_task_struct * create_mock_task(
     }
 
     my_task-> pid = task->pid;
+    my_task-> tgid = task->tgid;
+    my_task->prio = task->prio;
+    my_task->state = task->__state;
+    my_task->policy = task->policy;
     my_task-> comm = kmalloc(sizeof(task->comm), GFP_KERNEL);
     
     for(int i = 0; i<sizeof(task->comm); i++){
@@ -47,26 +51,30 @@ void free_mock_tasks(struct mock_task_struct *task) {
 
 struct mock_task_struct * create_mock_tasks(void){
     struct task_struct * task;
-    struct mock_task_struct * mock_task, * mock_task_ = NULL;
+    struct mock_task_struct * mock_task_head = NULL, * mock_task_it = NULL;
 
-    int first = 1;
+    for_each_process(task){ //the macro already handles concurrency
 
-    for_each_process(task){
+        struct mock_task_struct *new_task = create_mock_task(task);
 
-        mock_task_ = create_mock_task(task);
-
-        if(!mock_task_){
+        if(!new_task){
             printk(KERN_ERR "Error! Task could not be retrieved!\n");
             return NULL;
         }
 
-        if(first > 0){
-            first = 0;
-            mock_task = mock_task_;
+
+        if(!mock_task_head){
+ 
+            mock_task_head = new_task;
+
+        }
+        else{
+            mock_task_it->next = new_task;
         }
 
-        mock_task_ = mock_task_->next;
+        mock_task_it = new_task;
+
     }
 
-    return mock_task;
+    return mock_task_head;
 }

@@ -1,0 +1,7 @@
+#ignore objects and ignore stash, as well as build.sh
+
+build.sh
+
+*.o
+
+*.ko

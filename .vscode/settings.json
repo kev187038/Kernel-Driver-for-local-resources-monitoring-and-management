@@ -3,5 +3,6 @@
         "sched.h": "c",
         "string.h": "c",
         "module.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

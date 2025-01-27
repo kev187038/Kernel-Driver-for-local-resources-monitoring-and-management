@@ -15,8 +15,14 @@ MODULE_DESCRIPTION("Module that tracks resource usage and prioritizes processes"
 static struct mock_task_struct * tasks;
 
 static int srmc_show(struct seq_file *m, void *v) {
-    seq_printf(m, "PID: %d, Name: %s, CPU (user): %lld, CPU(kernel): %lld, MEM: %d, DISK I/O Read: %d, DISK I/O Write: %d\n", 
-        tasks->pid, tasks->comm, tasks->utime, tasks->stime, tasks->vmemory, tasks->io_rbytes, tasks->io_wbytes);
+
+    struct mock_task_struct * t = tasks;
+
+    while(t != NULL){
+        seq_printf(m, "PID: %d, Name: %s, CPU (user): %lld (ns), CPU(kernel): %lld (ns), MEM: %d, DISK I/O Read: %d, DISK I/O Write: %d, State: %ld, TIGD: %d, Priority: %d\n", 
+            t->pid, t->comm, t->utime, t->stime, t->vmemory, t->io_rbytes, t->io_wbytes, t->state, t->tgid, t->prio);
+        t = t->next;
+    }
     return 0;
 }
 
@@ -33,6 +39,7 @@ static const struct proc_ops p_ops = {
 static int __init __SRMC_init(void){
 
     printk("SRMC - Initializing Kernel Module!\n");
+
     tasks = create_mock_tasks();
     
     if (tasks == NULL) {
@@ -42,7 +49,7 @@ static int __init __SRMC_init(void){
 
     printk(KERN_INFO "SRMC - Mock task list created successfully!\n");
 
-    //Expose data to user space under /proc/srmc
+    //Expose data to user space under /proc/srmc proc_create will call the srmc_open and srmc_show
     proc_create("srmc", 0, NULL, &p_ops);
 
     return 0;
