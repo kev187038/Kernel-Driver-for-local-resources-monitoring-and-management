@@ -1030,6 +1030,12 @@ deps_/home/gab/Desktop/customdriver/SRMC/SRMC.o := \
     $(wildcard include/config/MODULES_USE_ELF_RELA) \
   /home/gab/Desktop/customdriver/SRMC/sched.h \
   /home/gab/Desktop/customdriver/SRMC/utilities.h \
+  include/linux/proc_fs.h \
+    $(wildcard include/config/PROC_PID_ARCH_STATUS) \
+  include/linux/seq_file.h \
+  include/linux/string_helpers.h \
+  include/linux/ctype.h \
+  include/linux/string_choices.h \
 
 /home/gab/Desktop/customdriver/SRMC/SRMC.o: $(deps_/home/gab/Desktop/customdriver/SRMC/SRMC.o)
 
