@@ -2,47 +2,55 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
 
-def get_process_data():
+#Opens file and returns the tuples in a dictionary
+def get_process_data(by_pid=False):
     ret = {}
-    #Creates dictionary { <fieldname> : [values] } to store all values
 
-    with open("/proc/srmc", "r") as f:
-        keys = f.readline().strip().split('\t')
-
-        for el in keys:
-            ret[el] = []
-
-        line = f.readline().strip().split('\t')
-
-        while(line != [''] and line != '' and line != None):
-
-            for el, k in zip(line, keys):
-                
-                if k == "PID" or k == "TGID" or k == "Priority" or k == "State":
-                    ret[k].append(int(el))
-                elif k != "Name":
-                    ret[k].append(float(el))
-                else:
-                    ret[k].append(el)
-
+    #Returns tuples in format { pid : [other fields' values] }, useful for lookup of processes
+    if by_pid:
+        with open("/proc/srmc", "r") as f:
+            keys = f.readline().strip().split('\t')
             line = f.readline().strip().split('\t')
 
+            while(line != [''] and line != '' and line != None):
+                k = int(line[0])
+                ret[k] = []
+                for i in range(1, len(keys)):
+                    val = line[i]
+                    if i == 7 or i == 8 or i == 9:
+                        val = int(val)
+                    elif i == 1:
+                        val = str(val)
+                    else:
+                        val = float(val)
+                    
+                    ret[k].append(val)
+
+                line = f.readline().strip().split('\t')
+    else:
+        #Creates dictionary { <fieldname> : [values] } to store all values
+        with open("/proc/srmc", "r") as f:
+            keys = f.readline().strip().split('\t')
+
+            for el in keys:
+                ret[el] = []
+            line = f.readline().strip().split('\t')
+
+            while(line != [''] and line != '' and line != None):
+                for el, k in zip(line, keys):
+                    if k == "PID" or k == "TGID" or k == "Priority" or k == "State":
+                        ret[k].append(int(el))
+                    elif k != "Name":
+                        ret[k].append(float(el))
+                    else:
+                        ret[k].append(el)
+
+                line = f.readline().strip().split('\t')
+
 
     return ret
 
-
-def get_data_by_pid(data):
-    #Data is dictionary from get_process_data
-    ret = {}
-
-    for values in zip(*[data[key] for key in data.keys()]):
-        ret[values[0]] = [] #pid is key
-        for i in range(1, len(data.keys())):
-            ret[values[0]].append(values[i])
-
-    return ret
-
-
+#START of Workflow
 class ProcessMonitor(Gtk.Window):
     def __init__(self):
         super().__init__(title="Process Monitor")
@@ -67,53 +75,63 @@ class ProcessMonitor(Gtk.Window):
     def update_data(self):
 
         try:
-            self.processes = get_process_data()
+            self.processes = get_process_data(by_pid=True)
         except OSError as e:
             #print("File currently in use from OS, ignore update_data call")
             return True
-
-        for i in range(len(self.processes["PID"])):
-
-            try:
-                iter = self.liststore.get_iter(i)  #Get the iterator for the row at index i
-                self.liststore.set(iter, 
-                                0, self.processes["PID"][i], 
-                                1, self.processes["Name"][i], 
-                                2, self.processes["CPU (User) (ms)"][i], 
-                                3, self.processes["CPU (Kernel) (ms)"][i], 
-                                4, self.processes["MEM(kb)"][i], 
-                                5, self.processes["DISK I/O Read(kb)"][i],
-                                6, self.processes["DISK I/O Write(kb)"][i],
-                                7, self.processes["State"][i],
-                                8, self.processes["TGID"][i],
-                                9, self.processes["Priority"][i])
-            except ValueError:
-                #When the row does not exist, add a new row
-                self.liststore.append([
-                    self.processes["PID"][i], 
-                    self.processes["Name"][i], 
-                    self.processes["CPU (User) (ms)"][i], 
-                    self.processes["CPU (Kernel) (ms)"][i], 
-                    self.processes["MEM(kb)"][i], 
-                    self.processes["DISK I/O Read(kb)"][i],
-                    self.processes["DISK I/O Write(kb)"][i],
-                    self.processes["State"][i],
-                    self.processes["TGID"][i],
-                    self.processes["Priority"][i]
-                ])
     
         #Remove all processes not present in the new struct
-        proc = get_data_by_pid(self.processes)
         iter = self.liststore.get_iter_first()
 
         #Use iterator to remove tuples from table if they are not present in the proc dict
-        while iter:
-            pid = self.liststore.get_value(iter, 0) 
+        while iter: #for some reason iter can return true when it ends
+            pid = self.liststore.get_value(iter, 0)
             
-            if pid not in proc:
-                iter = self.liststore.remove(iter)
+            if pid not in self.processes:
+                next_iter = self.liststore.iter_next(iter)
+                self.liststore.remove(iter)
+                iter = next_iter
+
+                if iter == None or iter is bool: #removed tuple could be last
+                    break
+
             else:
-                iter = self.liststore.iter_next(iter)
+                self.liststore.set(iter,
+                               1, self.processes[pid][0],  #Name
+                               2, self.processes[pid][1],  #CPU (User) (ms)
+                               3, self.processes[pid][2],  #CPU (Kernel) (ms)
+                               4, self.processes[pid][3],  #MEM (kb)
+                               5, self.processes[pid][4],  #DISK I/O Read (kb)
+                               6, self.processes[pid][5],  #DISK I/O Write (kb)
+                               7, self.processes[pid][6],  #State
+                               8, self.processes[pid][7],  #TGID
+                               9, self.processes[pid][8])  #Priority
+            
+            iter = self.liststore.iter_next(iter)
+
+        #Append new processes not present in the table
+        for pid in self.processes:
+            existing_iter = self.liststore.get_iter_first()
+            exists = False
+            while existing_iter:
+                if self.liststore.get_value(existing_iter, 0) == pid:
+                    exists = True
+                    break
+                existing_iter = self.liststore.iter_next(existing_iter)
+
+            if not exists:
+                self.liststore.append([
+                    pid,
+                    self.processes[pid][0],  #Name
+                    self.processes[pid][1],  #CPU (User) (ms)
+                    self.processes[pid][2],  #CPU (Kernel) (ms)
+                    self.processes[pid][3],  #MEM (kb)
+                    self.processes[pid][4],  #DISK I/O Read (kb)
+                    self.processes[pid][5],  #DISK I/O Write (kb)
+                    self.processes[pid][6],  #State
+                    self.processes[pid][7],  #TGID
+                    self.processes[pid][8]   #Priority
+                ])
 
         return True
     
@@ -137,35 +155,10 @@ class ProcessMonitor(Gtk.Window):
     def create_columns(self):
         renderer = Gtk.CellRendererText()
 
-        column = Gtk.TreeViewColumn("PID", renderer, text=0)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("Name", renderer, text=1)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("CPU (User) (ms)", renderer, text=2)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("CPU (Kernel) (ms)", renderer, text=3)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("MEM(kb)", renderer, text=4)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("DISK I/O Read(kb)", renderer, text=5)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("DISK I/O Write(kb)", renderer, text=6)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("State", renderer, text=7)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("TGID", renderer, text=8)
-        self.treeview.append_column(column)
-
-        column = Gtk.TreeViewColumn("Priority", renderer, text=9)
-        self.treeview.append_column(column)
+        for index, title in enumerate(self.processes.keys()):
+            column = Gtk.TreeViewColumn(title, renderer, text=index)
+            column.set_sort_column_id(index) #enables sorting by column
+            self.treeview.append_column(column)
 
 
 
