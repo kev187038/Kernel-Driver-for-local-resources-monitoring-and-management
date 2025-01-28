@@ -26,7 +26,7 @@ struct mock_task_struct * create_mock_task(
 
     my_task->comm[sizeof(task->comm) - 1] ='\0';
     my_task->utime = task->utime;
-    my_task->stime = task->stime;
+    my_task->stime = task->stime ;
 
     if(task->mm){
         my_task->vmemory = (task->mm->total_vm << (PAGE_SHIFT - 10));
@@ -35,8 +35,13 @@ struct mock_task_struct * create_mock_task(
         my_task->vmemory = 0;
     }
 
-    my_task->io_rbytes = (unsigned int)task->ioac.read_bytes;
-    my_task->io_wbytes = (unsigned int)task->ioac.write_bytes;
+    my_task->io_rbytes = task->ioac.read_bytes;
+    if(task->ioac.write_bytes < 0){
+        my_task->io_wbytes = 0;
+    }
+    else{
+        my_task->io_wbytes = task->ioac.write_bytes;
+    }
 
     my_task->next = NULL;
 

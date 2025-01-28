@@ -1,0 +1,1 @@
+savedcmd_/home/gab/Desktop/customdriver/SRMC/SRMC_Module.ko := ld -r -m elf_x86_64 -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/gab/Desktop/customdriver/SRMC/SRMC_Module.ko /home/gab/Desktop/customdriver/SRMC/SRMC_Module.o /home/gab/Desktop/customdriver/SRMC/SRMC_Module.mod.o

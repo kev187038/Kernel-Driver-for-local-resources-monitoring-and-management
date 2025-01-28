@@ -5,3 +5,7 @@ build.sh
 *.o
 
 *.ko
+
+.vscode/
+
+.qmake.stash
